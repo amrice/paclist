@@ -24,34 +24,22 @@ function replaceToNomal($str)
     return $str;
 }
 
-function toJSArray($array)
-{
-    $r = array();
-    array_push($r, "[");
-    $size = count($array);
-    for ($i = 0; $i < $size; $i++) {
-        array_push($r, "    decode('" . base64_encode($array[$i]) . "')" . ($i == $size - 1 ? "" : ","));
-    }
-    array_push($r, "]");
-    return implode("\n", $r);
-}
-
 function toPac($list, $proxy)
 {
-    $directNomalRules = array();
-    $directRegexRules = array();
-    $proxyRegexRules = array();
-    $proxyNomalRules = array();
+  
+    $rules = array();
 
     for ($i = 0; $i < count($list); $i++) {
         $rule = trim($list[$i]);
-        $isRegex = true;
+        $isRegex = false;
         $isProxy = true;
+        $scope = "url";
 
         if (strlen($rule) == 0 || startsWith($rule, "!") || startsWith($rule, "[")) {
 
             continue;
         }
+     
 
         if (startsWith($rule, "@@")) {
             $isProxy = false;
@@ -59,78 +47,86 @@ function toPac($list, $proxy)
         }
 
         if (startsWith($rule, "/") and endsWith($rule, "/")) {
+            $isRegex = true;
             $rule = substr(substr($rule, 1), 0, count($rule) - 2);
         } else if (startsWith($rule, "||")) {
             $rule = substr($rule, 2);
-            $rule = replaceToNomal($rule);
-            $rule = '^[\\w\\-]+:\\/+(?!\\/)(?:[^\\/]+\\.)?' . $rule;
+            if(endsWith($rule,"*") == false) $rule = $rule."*";
+            if(startsWith($rule,"*") == false) $rule = "*".$rule;
+            $scope = "host";
+          
         } else if (startsWith($rule, "|") or endsWith($rule, "|")) {
-
-            $rule = replaceToNomal($rule);
-
-            if (startsWith($rule, "\\|")) $rule = "^" . substr($rule, 2);
-            if (endsWith($rule, "\\|")) $rule = substr($rule, 0, -2) . "$";
+          if (startsWith($rule, "|")){
+            $rule = substr($rule, 1);
+            if(endsWith($rule,"*") == false) $rule = $rule."*";
+          }
+          if (endsWith($rule, "|")) {
+             $rule = substr($rule, 0, -1);
+             if(startsWith($rule,"*") == false) $rule = "*".$rule;
+          }
         } else {
-            $isRegex = false;
             if (startsWith($rule, "*") == false) $rule = "*$rule";
             if (endsWith($rule, "*") == false) $rule = "$rule*";
         }
-
-        if ($isProxy) {
-            if ($isRegex) {
-                array_push($proxyRegexRules, $rule);
-            } else {
-                array_push($proxyNomalRules, $rule);
-            }
-
-        } else {
-            if ($isRegex) {
-                array_push($directRegexRules, $rule);
-            } else {
-                array_push($directNomalRules, $rule);
-            }
-        }
-
-
+      
+      $obj = array();
+      $obj['pattern'] = $rule;
+      $obj['isProxy'] = $isProxy;
+      $obj['isRegex'] = $isRegex;
+      array_push($rules,$obj);
     }
-
-
-    $directNomalRules = toJSArray($directNomalRules);
-    $directRegexRules = toJSArray($directRegexRules);
-    $proxyRegexRules = toJSArray($proxyRegexRules);
-    $proxyNomalRules = toJSArray($proxyNomalRules);
-
+  
+    $rulesJSON = base64_encode(json_encode($rules));
     echo file_get_contents("Base64.js");
     echo <<<JS
 function decode(url){
       return Base64.decode(url);
 }
-var directNomalRules = $directNomalRules;
-var directRegexRules = $directRegexRules;
-var proxyRegexRules = $proxyRegexRules;
       
-var proxyNomalRules = $proxyNomalRules;
-   var regExpMatch = function(url, pattern) {
-      try {
-         return new RegExp(pattern).test(url);
-      } catch(ex) {
-         return false;
-      }
-   };
-var FindProxyForURL = function(url,host){
+var rules = eval(decode('$rulesJSON'));
+
+      
+var regExpMatch = function(url, pattern) {
+  try {
+    return new RegExp(pattern).test(url);
+  } catch(ex) {
+    return false;
+  }
+};
+
+      
+var FindProxyForURL = function(url,wt){
+   
    var p = "$proxy";
    var d = "DIRECT";
-   for(var i in directNomalRules ){
-      if(shExpMatch(url, directNomalRules[i])) return d;
-   }
-   for(var i in directRegexRules ){
-      if(regExpMatch(url, directRegexRules[i])) return d;
-   }
-   for(var i in proxyNomalRules ){
-      if(shExpMatch(url, proxyNomalRules[i])) return p;
-   }
-   for(var i in proxyRegexRules ){
-      if(regExpMatch(url, proxyRegexRules[i])) return p;
+     
+   var rule;
+   var match=false;
+   var c;
+   var pi = url.indexOf('://');
+   var pathi = url.indexOf('/',pi+3);
+   var protoctl = url.substring(0,pi);
+   var host = url.substring(pi,pathi);
+   var path = url.substring(pathi);
+      
+   for(var i=0;i<rules.length;i++){
+      rule = rules[i];
+      c = url;
+      if(rule.scope == "url")
+        c = url;
+      else if(rule.scope == "path")
+        c = path;
+      else if(rule.scope == "host")
+        c = host;
+      
+      if(rule.isRegex)
+        match = regExpMatch(c,rule.pattern);
+      else
+        match = shExpMatch(c,rule.pattern);
+      
+      if(match){
+        return (rule.isProxy?p:d);
+      }
    }
    return d;
 }
@@ -239,10 +235,19 @@ else if ($f == "test") {
             }
             function test() {
                 var url = document.getElementById("url").value;
+
                 if (url.indexOf("://") == -1) url = "http://" + url;
+              if (url.lastIndexOf('/') == url.indexOf('://')+2) url = url + "/";
                 var resultDiv = document.getElementById("result");
                 matchPattern = null;
-                resultDiv.innerHTML = "FindProxyForURL return is : " + FindProxyForURL(url) + " , " + (matchPattern != null ? " match " + matchPattern : " not match any pattern.");
+                var startTime = new Date().getTime();
+                var ret = FindProxyForURL(url);
+                var htmls = [];
+                htmls.push("URL:"+url);
+                htmls.push("FindProxyForURL return is : " + ret);
+                htmls.push((matchPattern != null ? " match " + matchPattern : " not match any pattern."));
+                htmls.push("use "+(new Date().getTime() - startTime)+"ms");
+                resultDiv.innerHTML = htmls.join("<br/>");
             }
 
 
@@ -262,10 +267,7 @@ else if ($f == "test") {
     </head>
     <body>
     <script type="text/javascript">
-        document.write("directNomalRules has " + directNomalRules.length + " items.<br/>");
-        document.write("directRegexRules has " + directRegexRules.length + " items.<br/>");
-        document.write("proxyRegexRules has " + proxyRegexRules.length + " items.<br/>");
-        document.write("proxyNomalRules has " + proxyNomalRules.length + " items.<br/>");
+        document.write("rules has " + rules.length + " items.<br/>");
     </script>
     URL:<textarea type="text" id="url" style="width:800px;"></textarea><a href="javascript:test()">Test</a>
 
