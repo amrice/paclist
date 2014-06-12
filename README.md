@@ -13,11 +13,14 @@
     参数说明：
     ### 前面的路径啥的是VPS的访问路径，重要的是参数。###
     
-    * f 为返回的模式
-        可选值 
-           pac 插件需要的JS格式文件，标准的PAC文件。
-               decode 下载并解码gfw的规则，和自定义的规则。直接输出，没有对GFW做屏蔽，直接打开会挂掉。
-               test 默认选项，测试规则和编辑自定义规则。
+    * f 为返回的模式 可选值 :
+       pac 插件需要的JS格式文件，标准的PAC文件。
+       decode 下载并解码gfw的规则，和自定义的规则。直接输出，没有对GFW做屏蔽，直接打开会挂掉。
+       test 默认选项，测试规则和编辑自定义规则。
            
     * p 为pac模式的proxy地址
     * pt 为pac模式的代理类型，一般有 http https socks5 sock，默认为socks5
+## 示例： ##
+    假设vps的域名为test.com，文件放在proxy目录下。
+    通过SSH -D 假设了本地的socks5代理，端口为7777。
+    则PAC地址为：http://test.com/proxy/?f=pac&p=127.0.0.1:7777&pt=socks5
