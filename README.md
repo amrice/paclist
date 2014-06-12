@@ -1,16 +1,16 @@
 #PACProxy
-用途：
+1.用途：
     利用VPS本身来获取gfwlist.txt，并且转换为PAC文件。可添加自定义内容。
-特性：
+2.特性：
     PHP编写，单文件，部署方便。
     gfwlist的获取从vps的网络获取，防止在本地gfwlist本身打不开的问题。
     支持网页测试规则。
     PAC文件规则利用Base64进行编码，防止GFW嗅探到规则直接给干掉。
     
-使用：
-    浏览器安装支持PAC的插件。
-    添加PAC地址：http://ip/path/?f=pac&p=proxy_server&pt=socks
-    参数说明：
+3.使用：
+    #浏览器安装支持PAC的插件。
+    #添加PAC地址：http://ip/path/?f=pac&p=proxy_server&pt=socks
+    #参数说明：
         前面的路径啥的是VPS的访问路径，重要的是参数。
         f 为返回的模式
             可选值 
@@ -20,5 +20,3 @@
               
         p 为pac模式的proxy地址
         pt 为pac模式的代理类型，一般有 http https socks5 sock，默认为socks5
-            
-    
