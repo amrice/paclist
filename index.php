@@ -178,7 +178,7 @@ else if ($f == "test") {
         <meta charset="utf-8">
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
         <title>YuKunYi Proxy Pac Manager</title>
-        <script src="/?f=pac&p=test.proxy.com&pt=socks" type="text/javascript"></script>
+        <script src="/?f=pac&p=test.proxy.com&pt=socks&gfw=<?php echo @$_REQUEST['gfw']?>" type="text/javascript"></script>
 
         <script type="text/javascript">
             var matchPattern = null;
