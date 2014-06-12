@@ -23,4 +23,4 @@
 ## 示例： ##
     假设vps的域名为test.com，文件放在proxy目录下。
     通过SSH -D 假设了本地的socks5代理，端口为7777。
-    则PAC地址为：http://test.com/proxy/?f=pac&p=127.0.0.1:7777&pt=socks5
+    则PAC地址为：__http://test.com/proxy/?f=pac&p=127.0.0.1:7777&pt=socks5__
