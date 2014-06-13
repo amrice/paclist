@@ -24,7 +24,7 @@ function replaceToNomal($str)
     return $str;
 }
 
-function toPac($list, $proxy)
+function toPac($list, $proxy,$debug)
 {
   
     $rules = array();
@@ -39,7 +39,7 @@ function toPac($list, $proxy)
 
             continue;
         }
-     
+      
 
         if (startsWith($rule, "@@")) {
             $isProxy = false;
@@ -56,13 +56,15 @@ function toPac($list, $proxy)
             $scope = "host";
           
         } else if (startsWith($rule, "|") or endsWith($rule, "|")) {
+          $start = false;
           if (startsWith($rule, "|")){
+            $start = true;
             $rule = substr($rule, 1);
-            if(endsWith($rule,"*") == false) $rule = $rule."*";
+            if(endsWith($rule,"*") == false && endsWith($rule, "|") ==false ) $rule = $rule."*";
           }
           if (endsWith($rule, "|")) {
              $rule = substr($rule, 0, -1);
-             if(startsWith($rule,"*") == false) $rule = "*".$rule;
+             if(startsWith($rule,"*") == false && $start == false) $rule = "*".$rule;
           }
         } else {
             if (startsWith($rule, "*") == false) $rule = "*$rule";
@@ -73,10 +75,14 @@ function toPac($list, $proxy)
       $obj['pattern'] = $rule;
       $obj['isProxy'] = $isProxy;
       $obj['isRegex'] = $isRegex;
+      $obj['scope'] = $scope;
       array_push($rules,$obj);
     }
   
     $rulesJSON = base64_encode(json_encode($rules));
+  if ( $debug ){
+    echo "alert('PACProxy pac file load start...');\n";
+  }
     echo file_get_contents("Base64.js");
     echo <<<JS
 function decode(url){
@@ -93,13 +99,7 @@ var regExpMatch = function(url, pattern) {
     return false;
   }
 };
-
-      
-var FindProxyForURL = function(url,wt){
-   
-   var p = "$proxy";
-   var d = "DIRECT";
-     
+var matchRule = function(url){
    var rule;
    var match=false;
    var c;
@@ -125,12 +125,39 @@ var FindProxyForURL = function(url,wt){
         match = shExpMatch(c,rule.pattern);
       
       if(match){
-        return (rule.isProxy?p:d);
+        return rule;
       }
    }
-   return d;
+   return null;
 }
+var getProxy = function(url){
+   var rule = matchRule(url);
+   return (rule == null || rule.isProxy == false ? "DIRECT" : "$proxy" );
+}
+
+var FindProxyForURL = getProxy;     
+
 JS;
+  
+  if($debug){
+    echo <<<DEBUGJS
+FindProxyForURL = function(url){
+      var startTime = new Date().getTime();
+      var rule = matchRule(url);
+      var proxy = (rule == null || rule.isProxy == false ? "DIRECT" : "$proxy" );
+      var debugMsg = [];
+      debugMsg.push("URL:"+url);
+      debugMsg.push("Proxy:"+proxy);
+      debugMsg.push("Match:"+(rule == null?"not match":rule.pattern));
+      debugMsg.push("Use:"+(new Date().getTime()-startTime)+"ms");      
+      alert(debugMsg.join("\\n"));
+      return proxy;
+}
+alert('PACProxy pac file load finish.');
+      
+DEBUGJS;
+  }
+
 
 }
 
@@ -162,8 +189,11 @@ if ($f == "write_user_rule") {
 }
 if ($f == "decode")
     echo $gfw_list;
-else if ($f == "pac")
-    echo toPac(explode("\n", $gfw_list), "$pt $p");
+  else if ($f == "pac"){
+    if ($o != "html")
+      header('Content-type: application/x-ns-proxy-autoconfig');
+    echo toPac(explode("\n", $gfw_list), "$pt $p",@$_REQUEST['debug'] == 1);
+  }
 else if ($f == "test") {
 
     ?>
