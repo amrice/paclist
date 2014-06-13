@@ -23,6 +23,8 @@
            
     * p 为pac模式的proxy地址
     * pt 为pac模式的代理类型，一般有 http https socks5 sock，默认为socks5
+    * gfw 的值为0则不载入autoproxy的gfwlist，仅仅使用user rule.
+    * debug 的值为0时会使用alert打印调试信息，注:alert在一般的浏览器上都不会有弹出框，会输出到浏览器的控制台！
 ## 示例： ##
     假设vps的域名为test.com，文件放在proxy目录下。
     通过SSH -D 假设了本地的socks5代理，端口为7777。
