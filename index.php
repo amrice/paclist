@@ -51,8 +51,10 @@ function toPac($list, $proxy,$debug)
             $rule = substr(substr($rule, 1), 0, count($rule) - 2);
         } else if (startsWith($rule, "||")) {
             $rule = substr($rule, 2);
-            if(endsWith($rule,"*") == false) $rule = $rule."*";
-            if(startsWith($rule,"*") == false) $rule = "*".$rule;
+            $isRegex = true;
+            //if(endsWith($rule,"*") == false) $rule = $rule."*";
+            //if(startsWith($rule,"*") == false) $rule = "*".$rule;
+            $rule = '([\\w\\-\\_\\.]+\\.)?'.$rule;
             $scope = "host";
           
         } else if (startsWith($rule, "|") or endsWith($rule, "|")) {
