@@ -54,7 +54,7 @@ function toPac($list, $proxy,$debug)
             $isRegex = true;
             //if(endsWith($rule,"*") == false) $rule = $rule."*";
             //if(startsWith($rule,"*") == false) $rule = "*".$rule;
-            $rule = '^([\\w\\-\\_\\.]+\\.)?'.$rule;
+            $rule = '^([\\w\\-\\_\\.]+\\.)?'.$rule.'$';
             $scope = "host";
           
         } else if (startsWith($rule, "|") or endsWith($rule, "|")) {
@@ -108,7 +108,7 @@ var matchRule = function(url){
    var pi = url.indexOf('://');
    var pathi = url.indexOf('/',pi+3);
    var protoctl = url.substring(0,pi);
-   var host = url.substring(pi,pathi);
+   var host = url.substring(pi+3,pathi);
    var path = url.substring(pathi);
       
    for(var i=0;i<rules.length;i++){
