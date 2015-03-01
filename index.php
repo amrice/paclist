@@ -54,7 +54,7 @@ function toPac($list, $proxy,$debug)
             $isRegex = true;
             //if(endsWith($rule,"*") == false) $rule = $rule."*";
             //if(startsWith($rule,"*") == false) $rule = "*".$rule;
-            $rule = '([\\w\\-\\_\\.]+\\.)?'.$rule;
+            $rule = '^([\\w\\-\\_\\.]+\\.)?'.$rule;
             $scope = "host";
           
         } else if (startsWith($rule, "|") or endsWith($rule, "|")) {
