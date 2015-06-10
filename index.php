@@ -88,36 +88,12 @@ function toPac($list, $proxy, $debug)
 
 
     $rulesJSON = encode(json_encode($rules));
-    $ced = array(
-        "a" => ",",
-        "A" => ".",
-        "b" => "/",
-        "B" => "?",
-        "c" => ";",
-        "C" => ':',
-        "d" => "[",
-        "D" => "]",
-        "e" => "{",
-        "E" => "}",
-        "f" => "<",
-        "F" => "|",
-        "g" => "=",
-        "G" => "-",
-        "1" => ")",
-        "2" => "(",
-        "3" => "*",
-        "4" => "&",
-        "5" => "^",
-        "6" => "%",
-        "7" => "$",
-        "8" => "#",
-        "9" => "@",
-        "0" => "!"
-    );
-    foreach ($ced as $k => $i) {
-        $rulesJSON = str_replace($k, $i, $rulesJSON);
+    $tmp = $rulesJSON;
+    $rulesJSON = array();
+    for ($i = 0; $i < strlen($tmp); $i++) {
+        array_push($rulesJSON, ord($tmp[$i]) + 100 + $i);
     }
-    $ced = encode(json_encode($ced));
+    $rulesJSON = implode(":", $rulesJSON);
     if ($debug) {
         echo "alert('PACProxy pac file load start...');\n";
     }
@@ -143,11 +119,13 @@ function replace(str,s,t){
 function decode(d){
       return strrev(Base64.decode(strrev(d)));
 }
-var rulesJSON = '$rulesJSON';
-var ced = JSON.parse(decode('$ced'));
-for(var k in ced){
-    rulesJSON = replace(rulesJSON,ced[k],k);
+var rulesJSON = '$rulesJSON'.split(":");
+var t = [];
+for(var i =0;i < rulesJSON.length;i++){
+    t[i] = String.fromCharCode(rulesJSON[i]-100-i);
 }
+rulesJSON = t.join("");
+
 var data = decode(rulesJSON);
 var rules = eval(data);
 
