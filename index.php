@@ -24,9 +24,14 @@ function replaceToNomal($str)
     return $str;
 }
 
-function toPac($list, $proxy,$debug)
+function encode($d)
 {
-  
+    return strrev(base64_encode(strrev($d)));
+}
+
+function toPac($list, $proxy, $debug)
+{
+
     $rules = array();
 
     for ($i = 0; $i < count($list); $i++) {
@@ -39,7 +44,7 @@ function toPac($list, $proxy,$debug)
 
             continue;
         }
-      
+
 
         if (startsWith($rule, "@@")) {
             $isProxy = false;
@@ -54,44 +59,98 @@ function toPac($list, $proxy,$debug)
             $isRegex = true;
             //if(endsWith($rule,"*") == false) $rule = $rule."*";
             //if(startsWith($rule,"*") == false) $rule = "*".$rule;
-            $rule = '^([\\w\\-\\_\\.]+\\.)?'.$rule.'$';
+            $rule = '^([\\w\\-\\_\\.]+\\.)?' . $rule . '$';
             $scope = "host";
-          
+
         } else if (startsWith($rule, "|") or endsWith($rule, "|")) {
-          $start = false;
-          if (startsWith($rule, "|")){
-            $start = true;
-            $rule = substr($rule, 1);
-            if(endsWith($rule,"*") == false && endsWith($rule, "|") ==false ) $rule = $rule."*";
-          }
-          if (endsWith($rule, "|")) {
-             $rule = substr($rule, 0, -1);
-             if(startsWith($rule,"*") == false && $start == false) $rule = "*".$rule;
-          }
+            $start = false;
+            if (startsWith($rule, "|")) {
+                $start = true;
+                $rule = substr($rule, 1);
+                if (endsWith($rule, "*") == false && endsWith($rule, "|") == false) $rule = $rule . "*";
+            }
+            if (endsWith($rule, "|")) {
+                $rule = substr($rule, 0, -1);
+                if (startsWith($rule, "*") == false && $start == false) $rule = "*" . $rule;
+            }
         } else {
             if (startsWith($rule, "*") == false) $rule = "*$rule";
             if (endsWith($rule, "*") == false) $rule = "$rule*";
         }
-      
-      $obj = array();
-      $obj['pattern'] = $rule;
-      $obj['isProxy'] = $isProxy;
-      $obj['isRegex'] = $isRegex;
-      $obj['scope'] = $scope;
-      array_push($rules,$obj);
+
+        $obj = array();
+        $obj['pattern'] = $rule;
+        $obj['isProxy'] = $isProxy;
+        $obj['isRegex'] = $isRegex;
+        $obj['scope'] = $scope;
+        array_push($rules, $obj);
     }
-  
-    $rulesJSON = base64_encode(json_encode($rules));
-  if ( $debug ){
-    echo "alert('PACProxy pac file load start...');\n";
-  }
+
+
+    $rulesJSON = encode(json_encode($rules));
+    $ced = array(
+        "a" => ",",
+        "A" => ".",
+        "b" => "/",
+        "B" => "?",
+        "c" => ";",
+        "C" => ':',
+        "d" => "[",
+        "D" => "]",
+        "e" => "{",
+        "E" => "}",
+        "f" => "<",
+        "F" => "|",
+        "g" => "=",
+        "G" => "-",
+        "1" => ")",
+        "2" => "(",
+        "3" => "*",
+        "4" => "&",
+        "5" => "^",
+        "6" => "%",
+        "7" => "$",
+        "8" => "#",
+        "9" => "@",
+        "0" => "!"
+    );
+    foreach ($ced as $k => $i) {
+        $rulesJSON = str_replace($k, $i, $rulesJSON);
+    }
+    $ced = encode(json_encode($ced));
+    if ($debug) {
+        echo "alert('PACProxy pac file load start...');\n";
+    }
     echo file_get_contents("Base64.js");
     echo <<<JS
-function decode(url){
-      return Base64.decode(url);
+
+function strrev(str){
+    var tmp = [];
+    for(var i=0;i<str.length;i++)
+        tmp[i] = str.charAt(str.length-1-i);
+    return tmp.join("").toString();
 }
-      
-var rules = eval(decode('$rulesJSON'));
+
+function replace(str,s,t){
+    while(true){
+       var new_str = str.replace(s,t);
+       if(new_str == str)
+            return str;
+       str = new_str;
+    }
+}
+
+function decode(d){
+      return strrev(Base64.decode(strrev(d)));
+}
+var rulesJSON = '$rulesJSON';
+var ced = JSON.parse(decode('$ced'));
+for(var k in ced){
+    rulesJSON = replace(rulesJSON,ced[k],k);
+}
+var data = decode(rulesJSON);
+var rules = eval(data);
+
 
       
 var regExpMatch = function(url, pattern) {
@@ -140,9 +199,9 @@ var getProxy = function(url){
 var FindProxyForURL = getProxy;     
 
 JS;
-  
-  if($debug){
-    echo <<<DEBUGJS
+
+    if ($debug) {
+        echo <<<DEBUGJS
 FindProxyForURL = function(url){
       var startTime = new Date().getTime();
       var rule = matchRule(url);
@@ -158,16 +217,16 @@ FindProxyForURL = function(url){
 alert('PACProxy pac file load finish.');
       
 DEBUGJS;
-  }
+    }
 
 
 }
 
 $gfw_list = file_get_contents("gfw.user.rule");
-if ( @$_REQUEST['gfw'] != "0" ){
+if (@$_REQUEST['gfw'] == "1") {
     $gfw_url = "http://autoproxy-gfwlist.googlecode.com/svn/trunk/gfwlist.txt";
     $gfw_list_b64 = file_get_contents($gfw_url) or die("get $gfw_url error!");
-    $gfw_list = $gfw_list."\n" . base64_decode($gfw_list_b64);
+    $gfw_list = $gfw_list . "\n" . base64_decode($gfw_list_b64);
 }
 
 $o = @$_REQUEST["o"];
@@ -191,12 +250,11 @@ if ($f == "write_user_rule") {
 }
 if ($f == "decode")
     echo $gfw_list;
-  else if ($f == "pac"){
+else if ($f == "pac") {
     if ($o != "html")
-      header('Content-type: application/x-ns-proxy-autoconfig');
-    echo toPac(explode("\n", $gfw_list), "$pt $p",@$_REQUEST['debug'] == 1);
-  }
-else if ($f == "test") {
+        header('Content-type: application/x-ns-proxy-autoconfig');
+    echo toPac(explode("\n", $gfw_list), "$pt $p", @$_REQUEST['debug'] == 1);
+} else if ($f == "test") {
 
     ?>
 
@@ -206,7 +264,8 @@ else if ($f == "test") {
         <meta charset="utf-8">
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
         <title>YuKunYi Proxy Pac Manager</title>
-        <script src="/?f=pac&p=test.proxy.com&pt=socks&gfw=<?php echo @$_REQUEST['gfw']?>" type="text/javascript"></script>
+        <script src="?f=pac&p=test.proxy.com&pt=socks&gfw=<?php echo @$_REQUEST['gfw'] ?>"
+                type="text/javascript"></script>
 
         <script type="text/javascript">
             var matchPattern = null;
@@ -269,16 +328,16 @@ else if ($f == "test") {
                 var url = document.getElementById("url").value;
 
                 if (url.indexOf("://") == -1) url = "http://" + url;
-              if (url.lastIndexOf('/') == url.indexOf('://')+2) url = url + "/";
+                if (url.lastIndexOf('/') == url.indexOf('://') + 2) url = url + "/";
                 var resultDiv = document.getElementById("result");
                 matchPattern = null;
                 var startTime = new Date().getTime();
                 var ret = FindProxyForURL(url);
                 var htmls = [];
-                htmls.push("URL:"+url);
+                htmls.push("URL:" + url);
                 htmls.push("FindProxyForURL return is : " + ret);
                 htmls.push((matchPattern != null ? " match " + matchPattern : " not match any pattern."));
-                htmls.push("use "+(new Date().getTime() - startTime)+"ms");
+                htmls.push("use " + (new Date().getTime() - startTime) + "ms");
                 resultDiv.innerHTML = htmls.join("<br/>");
             }
 
