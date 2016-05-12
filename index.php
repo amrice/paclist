@@ -224,7 +224,7 @@ DEBUGJS;
 
 $gfw_list = file_get_contents("gfw.user.rule");
 if (@$_REQUEST['gfw'] != "0") {
-    $gfw_url = "http://autoproxy-gfwlist.googlecode.com/svn/trunk/gfwlist.txt";
+    $gfw_url = "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt";
     $gfw_list_b64 = file_get_contents($gfw_url) or die("get $gfw_url error!");
     $gfw_list = $gfw_list . "\n" . base64_decode($gfw_list_b64);
 }
